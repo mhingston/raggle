@@ -1,0 +1,10 @@
+node_modules/
+dist/
+
+# Raggle index artifacts
+*.db
+bm25_index.json
+acronyms.json
+
+# Local index dir (if used inside repo)
+.raggle/

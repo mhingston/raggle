@@ -1,0 +1,44 @@
+{
+  "name": "@mhingston5/raggle",
+  "version": "0.1.0",
+  "description": "Markdown knowledgebase indexer with hybrid search (semantic + BM25 + graph)",
+  "author": "Mark Hingsston",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mhingston/raggle"
+  },
+  "module": "src/cli.ts",
+  "type": "module",
+  "bin": {
+    "raggle": "./dist/cli.js"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "mcp": "bun run src/mcp/server.ts",
+    "lint": "biome check src/",
+    "lint:fix": "biome check src/ --write",
+    "format": "biome format src/ --write",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "ci": "bun run lint && bun test --coverage",
+    "build": "bun build src/cli.ts --outfile dist/cli.js --target bun && chmod +x dist/cli.js",
+    "prepare": "bun run build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.14",
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@xenova/transformers": "^2.17.2",
+    "commander": "^14.0.3",
+    "dotenv": "^16.6.1",
+    "sqlite-vec": "^0.1.7-alpha.2"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^12.0.0"
+  }
+}
