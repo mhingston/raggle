@@ -13,38 +13,6 @@ raggle is a local-first Markdown knowledge base indexer. It builds a hybrid inde
 - Local knowledge base search for notes, docs, and project wikis.
 - Editor/agent integrations that need fast, offline retrieval.
 
-## Quickstart
-
-```bash
-# Bun is required at runtime (CLI is a Bun executable)
-# Install Bun first, then:
-npm install -g @mhingston5/raggle
-
-raggle index /path/to/markdown/files
-raggle search "your query here"
-```
-
-If you haven’t installed the CLI globally, run from source with Bun:
-
-```bash
-bun install
-bun run src/cli.ts index /path/to/markdown/files
-bun run src/cli.ts search "your query here"
-```
-
-End-to-end flow:
-
-```bash
-# 1) Index a directory
-raggle index /path/to/markdown/files
-
-# 2) Search the index
-raggle search "your query here"
-
-# 3) (Optional) Get MCP config for your editor
-raggle mcp-config
-```
-
 ## Requirements
 
 - Bun (required at runtime; the CLI runs under Bun and uses `bun:sqlite`)
@@ -58,12 +26,28 @@ raggle mcp-config
 - **Markdown Native**: ATX heading parsing and heading-aware chunking
 - **Entity Extraction**: Structural extraction with optional NER
 
-## Installation
-
-Requires Bun on your PATH.
+## Quickstart
 
 ```bash
+# Install the CLI (Bun required)
 npm install -g @mhingston5/raggle
+
+# Index a directory
+raggle index /path/to/markdown/files
+
+# Search the index
+raggle search "your query here"
+
+# (Optional) Get MCP config for your editor
+raggle mcp-config
+```
+
+If you haven’t installed the CLI globally, run from source with Bun:
+
+```bash
+bun install
+bun run src/cli.ts index /path/to/markdown/files
+bun run src/cli.ts search "your query here"
 ```
 
 ## Usage
@@ -71,22 +55,16 @@ npm install -g @mhingston5/raggle
 ### CLI
 
 ```bash
-# Index a directory of Markdown files
 raggle index /path/to/markdown/files
 
-# Search the indexed knowledge base
 raggle search "your query here"
 
-# Graph search with configurable seed source (bm25|semantic|hybrid)
 raggle search "your query here" --mode graph --graph-seed bm25
 
-# Get index status
 raggle status
 
-# Clear the index
 raggle clear
 
-# Output MCP configuration
 raggle mcp-config
 ```
 
@@ -117,7 +95,7 @@ Example `mcp-config` output:
     "raggle": {
       "command": "bun",
       "args": ["run", "/path/to/raggle/dist/cli.js", "mcp"],
-      "env": { "RAGGLE_INDEX_DIR": "/Users/you/.raggle" }
+      "env": { "RAGGLE_INDEX_DIR": "/Users/you/project" }
     }
   }
 }
@@ -129,7 +107,7 @@ All configuration uses the `RAGGLE_` prefix:
 
 Raggle loads a `.env` file from the current working directory (if present) when starting the CLI or MCP server.
 
-- `RAGGLE_INDEX_DIR`: Index directory (default: `~/.raggle`)
+- `RAGGLE_INDEX_DIR`: Index directory (default: current working directory)
 - `RAGGLE_EMBEDDING_MODEL`: Embedding model (default: `Xenova/bge-small-en-v1.5`)
 - `RAGGLE_EMBEDDING_DIM`: Embedding dimension override (default: `384`)
 - `RAGGLE_EXTRACT_DEPTH`: Extraction depth (`structural` or `ner`, default: `ner`)
@@ -157,13 +135,15 @@ The first run will download model files from Hugging Face. Subsequent runs use t
 
 ## Storage
 
-Data is stored in `~/.raggle/` by default:
+Data is stored in the current working directory by default:
 
 - `metadata.db`: SQLite database for chunks and stats
 - `vectors.db`: Vector embeddings with HNSW indexing (via sqlite-vec)
 - `graph.db`: Knowledge graph (nodes and edges)
 - `bm25_index.json`: BM25 keyword index
 - `acronyms.json`: Acronym dictionary
+
+If you index multiple projects from the same directory, they will share the same databases. Set `RAGGLE_INDEX_DIR` to isolate per-project indexes.
 
 ### Vector Index
 

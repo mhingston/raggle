@@ -117,11 +117,13 @@ export async function search(query: string, options: SearchOptions = {}): Promis
     } else {
       seedSource = bm25Search(expandedQuery, bm25Index, topK * 2).map(([id]) => id);
     }
-    const seedIds = seedSource.filter((id) => {
-      if (seenIds.has(id)) return false;
-      seenIds.add(id);
-      return true;
-    }).slice(0, topK);
+    const seedIds = seedSource
+      .filter((id) => {
+        if (seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+      })
+      .slice(0, topK);
 
     if (seedIds.length > 0) {
       const graphResults = graphSearch(seedIds, settings.graphMaxHops);

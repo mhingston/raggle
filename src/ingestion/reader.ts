@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, lstat, realpath, stat } from "node:fs/promises";
+import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { basename, extname, join, sep } from "node:path";
 import type { FileInfo } from "../core/models";
 

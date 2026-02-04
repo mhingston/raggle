@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
-import { loadEnv } from "./core/env";
 import { getSettings } from "./core/config";
+import { loadEnv } from "./core/env";
 import type { SearchMode } from "./core/models";
 import { type IndexingProgress, indexDirectory } from "./ingestion/pipeline";
 import { type SearchOptions, search } from "./search/index";
 import { getGraphStore, getMetadataStore, getVectorStore } from "./storage";
-import { fileURLToPath } from "node:url";
 
 if (!process.versions?.bun) {
   console.error("raggle requires Bun. Install Bun and rerun: https://bun.sh");
@@ -67,11 +67,7 @@ program
   .description("Search the indexed knowledgebase")
   .argument("<query>", "Search query")
   .option("--mode <mode>", "Search mode (semantic|bm25|graph|hybrid)", "hybrid")
-  .option(
-    "--graph-seed <mode>",
-    "Seed source for graph-only search (bm25|semantic|hybrid)",
-    "bm25"
-  )
+  .option("--graph-seed <mode>", "Seed source for graph-only search (bm25|semantic|hybrid)", "bm25")
   .option("--top <n>", "Number of results to return", "10")
   .option("--no-rerank", "Disable reranking")
   .option("--no-expand", "Disable query expansion with acronyms")
@@ -138,6 +134,8 @@ program
 
       if (!stats) {
         console.log("No index found.");
+        const settings = getSettings();
+        console.log(`  Index directory: ${settings.indexDir}`);
         console.log("Run 'raggle index <directory>' to create an index.");
         return;
       }

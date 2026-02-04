@@ -7,8 +7,8 @@ import {
   ListToolsRequestSchema,
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import { loadEnv } from "../core/env";
 import { getSettings } from "../core/config";
+import { loadEnv } from "../core/env";
 import type { SearchMode } from "../core/models";
 import { type IndexingProgress, indexDirectory } from "../ingestion/pipeline";
 import { type SearchOptions, search } from "../search/index";

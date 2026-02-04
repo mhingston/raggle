@@ -444,9 +444,9 @@ function detectVectorStoreType(dbFile: string): "sqlite-vec" | "brute" | "unknow
   if (!existsSync(dbFile)) return "unknown";
   const db = new BunDatabase(dbFile);
   try {
-    const rows = db
-      .query(`SELECT name FROM sqlite_master WHERE type = 'table'`)
-      .all() as Array<{ name: string }>;
+    const rows = db.query(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{
+      name: string;
+    }>;
     const tables = new Set(rows.map((r) => r.name));
     if (tables.has("vec_chunks")) return "sqlite-vec";
     if (tables.has("vectors")) return "brute";

@@ -1,5 +1,4 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { cwd } from "node:process";
 import type { ExtractDepth } from "./models";
 
 export type Settings = {
@@ -55,7 +54,7 @@ function getEnvArray(key: string, defaultValue: string[]): string[] {
 }
 
 export function loadSettings(): Settings {
-  const dataDir = getEnvString("RAGGLE_INDEX_DIR", join(homedir(), ".raggle"));
+  const dataDir = getEnvString("RAGGLE_INDEX_DIR", cwd());
   const embeddingDim = getEnvNumber("RAGGLE_EMBEDDING_DIM", 384);
 
   return {
