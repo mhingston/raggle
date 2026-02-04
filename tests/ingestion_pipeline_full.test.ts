@@ -1,31 +1,40 @@
-import { describe, expect, test, mock } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import esmock from "esmock";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { getSettings } from "../src/core/config";
 import { getBM25IndexPath, setCachedBM25Index } from "../src/search/bm25";
 import { getGraphStore, getMetadataStore } from "../src/storage";
-import { indexDirectory } from "../src/ingestion/pipeline";
 import { createTempIndexDir, resetAllStores } from "./helpers";
 
-mock.module("@xenova/transformers", () => ({
-  pipeline: async (task: string) => {
-    if (task === "feature-extraction") {
-      return async (texts: string[] | string) => {
-        const items = Array.isArray(texts) ? texts : [texts];
-        return items.map(() => ({ data: new Float32Array([0.1, 0.2, 0.3]) }));
-      };
-    }
-    if (task === "token-classification") {
-      return async (_text: string) => {
-        return [
-          { word: "Alice", entity_group: "PER", score: 0.9, start: 0, end: 5 },
-          { word: "Acme", entity_group: "ORG", score: 0.8, start: 10, end: 14 },
-        ];
-      };
-    }
-    return async () => [];
+const { indexDirectory } = await esmock.p("../src/ingestion/pipeline", {
+  "@xenova/transformers": {
+    pipeline: async (task: string) => {
+      if (task === "feature-extraction") {
+        return async (texts: string[] | string) => {
+          const items = Array.isArray(texts) ? texts : [texts];
+          return items.map(() => {
+            const data = new Float32Array(384);
+            data[0] = 0.1;
+            data[1] = 0.2;
+            data[2] = 0.3;
+            return { data };
+          });
+        };
+      }
+      if (task === "token-classification") {
+        return async (_text: string) => {
+          return [
+            { word: "Alice", entity_group: "PER", score: 0.9, start: 0, end: 5 },
+            { word: "Acme", entity_group: "ORG", score: 0.8, start: 10, end: 14 },
+          ];
+        };
+      }
+      return async () => [];
+    },
   },
-}));
+});
 
 describe("ingestion/pipeline", () => {
   test("indexes with rebuild, NER, keyterms, and incremental changes", async () => {

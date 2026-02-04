@@ -1,18 +1,24 @@
-import { describe, expect, test, mock } from "bun:test";
-import { mkdirSync, renameSync, writeFileSync } from "fs";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import esmock from "esmock";
+import { mkdirSync, renameSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 import { createTempIndexDir } from "./helpers";
 
-mock.module("@xenova/transformers", () => ({
-  pipeline: async (_task: string) => {
-    return async (texts: string[] | string) => {
-      const items = Array.isArray(texts) ? texts : [texts];
-      return items.map(() => ({ data: new Float32Array([1, 0]) }));
-    };
+const { indexDirectory } = await esmock.p("../src/ingestion/pipeline", {
+  "@xenova/transformers": {
+    pipeline: async (_task: string) => {
+      return async (texts: string[] | string) => {
+        const items = Array.isArray(texts) ? texts : [texts];
+        return items.map(() => {
+          const data = new Float32Array(384);
+          data[0] = 1;
+          return { data };
+        });
+      };
+    },
   },
-}));
-
-import { indexDirectory } from "../src/ingestion/pipeline";
+});
 import { getMetadataStore } from "../src/storage";
 
 describe("ingestion/pipeline incremental", () => {
@@ -38,7 +44,7 @@ describe("ingestion/pipeline incremental", () => {
     // Delete b.md
     writeFileSync(fileB, "# B\nBravo charlie");
     // Remove file entirely
-    await Bun.file(fileB).delete();
+    unlinkSync(fileB);
 
     await indexDirectory(contentDir, { extractDepth: "structural" });
 

@@ -1,6 +1,6 @@
-import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import { assertNotReadOnly, getSettings, isReadOnly } from "../core/config";
 import type { Chunk, FileInfo, IndexStats } from "../core/models";
 
@@ -82,7 +82,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   private validateSchema(): void {
     const rows = this.db
-      .query(`SELECT name FROM sqlite_master WHERE type = 'table'`)
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`)
       .all() as Array<{ name: string }>;
     const tables = new Set(rows.map((r) => r.name));
     const required = ["chunks", "files", "stats"];
@@ -95,7 +95,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   saveChunks(chunks: Chunk[]): void {
     assertNotReadOnly("saveChunks");
-    const insert = this.db.query(`
+    const insert = this.db.prepare(`
       INSERT OR REPLACE INTO chunks 
       (chunk_id, file_path, heading_hierarchy, level, text, chunk_index, char_offset)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -116,7 +116,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   saveFiles(files: FileInfo[]): void {
     assertNotReadOnly("saveFiles");
-    const insert = this.db.query(`
+    const insert = this.db.prepare(`
       INSERT OR REPLACE INTO files
       (file_path, title, last_modified, size_bytes, checksum)
       VALUES (?, ?, ?, ?, ?)
@@ -135,7 +135,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   getFiles(): FileInfo[] {
     const rows = this.db
-      .query(
+      .prepare(
         `
       SELECT file_path, title, last_modified, size_bytes, checksum
       FROM files
@@ -160,7 +160,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   getFileByPath(filePath: string): FileInfo | null {
     const row = this.db
-      .query(
+      .prepare(
         `
       SELECT file_path, title, last_modified, size_bytes, checksum
       FROM files WHERE file_path = ?
@@ -191,12 +191,12 @@ export class SQLiteMetadataStore implements MetadataStore {
     if (filePaths.length === 0) return;
     assertNotReadOnly("deleteFiles");
     const placeholders = filePaths.map(() => "?").join(",");
-    this.db.query(`DELETE FROM files WHERE file_path IN (${placeholders})`).run(...filePaths);
+    this.db.prepare(`DELETE FROM files WHERE file_path IN (${placeholders})`).run(...filePaths);
   }
 
   getChunk(chunkId: string): Chunk | null {
     const row = this.db
-      .query(
+      .prepare(
         `
       SELECT chunk_id, file_path, heading_hierarchy, level, text, chunk_index, char_offset
       FROM chunks WHERE chunk_id = ?
@@ -232,7 +232,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
     const placeholders = chunkIds.map(() => "?").join(",");
     const rows = this.db
-      .query(
+      .prepare(
         `
       SELECT chunk_id, file_path, heading_hierarchy, level, text, chunk_index, char_offset
       FROM chunks WHERE chunk_id IN (${placeholders})
@@ -261,7 +261,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   getAllChunks(): Chunk[] {
     const rows = this.db
-      .query(
+      .prepare(
         `
       SELECT chunk_id, file_path, heading_hierarchy, level, text, chunk_index, char_offset
       FROM chunks
@@ -290,7 +290,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   getChunkIdsByFile(filePath: string): string[] {
     const rows = this.db
-      .query(
+      .prepare(
         `
       SELECT chunk_id FROM chunks WHERE file_path = ?
     `
@@ -301,13 +301,13 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   deleteChunksByFile(filePath: string): void {
     assertNotReadOnly("deleteChunksByFile");
-    this.db.query("DELETE FROM chunks WHERE file_path = ?").run(filePath);
+    this.db.prepare("DELETE FROM chunks WHERE file_path = ?").run(filePath);
   }
 
   saveStats(stats: IndexStats): void {
     assertNotReadOnly("saveStats");
     this.db
-      .query(
+      .prepare(
         `
       INSERT OR REPLACE INTO stats 
       (id, total_files, total_chunks, total_entities, total_edges, last_indexed)
@@ -325,7 +325,7 @@ export class SQLiteMetadataStore implements MetadataStore {
 
   getStats(): IndexStats | null {
     const row = this.db
-      .query(
+      .prepare(
         `
       SELECT total_files, total_chunks, total_entities, total_edges, last_indexed
       FROM stats WHERE id = 1

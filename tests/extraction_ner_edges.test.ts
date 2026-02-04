@@ -1,11 +1,17 @@
-import { describe, expect, test, mock } from "bun:test";
-import { extractNamedEntities, getNERPipeline, resetNERPipeline } from "../src/extraction/ner";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import esmock from "esmock";
 
-mock.module("@xenova/transformers", () => ({
-  pipeline: async () => {
-    throw new Error("boom");
-  },
-}));
+const { extractNamedEntities, getNERPipeline, resetNERPipeline } = await esmock.p(
+  "../src/extraction/ner",
+  {
+    "@xenova/transformers": {
+      pipeline: async () => {
+        throw new Error("boom");
+      },
+    },
+  }
+);
 
 describe("extraction/ner edges", () => {
   test("getNERPipeline returns null when pipeline fails", async () => {

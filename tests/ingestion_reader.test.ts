@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join, sep } from "path";

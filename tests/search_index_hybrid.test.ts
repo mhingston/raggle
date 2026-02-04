@@ -1,19 +1,20 @@
-import { describe, expect, test, mock } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import esmock from "esmock";
 import { createTempIndexDir } from "./helpers";
 import { getGraphStore, getMetadataStore } from "../src/storage";
 
-mock.module("@xenova/transformers", () => ({
-  pipeline: async () => {
-    return async () => [{ label: "LABEL_1", score: 0.9 }];
+const { search } = await esmock.p("../src/search/index", {
+  "@xenova/transformers": {
+    pipeline: async () => {
+      return async () => [{ label: "LABEL_1", score: 0.9 }];
+    },
   },
-}));
-
-mock.module("../src/search/semantic", () => ({
-  semanticSearch: async () => [["c1", 0.9]],
-  encodeQuery: async () => [1, 0],
-}));
-
-import { search } from "../src/search/index";
+  "../src/search/semantic": {
+    semanticSearch: async () => [["c1", 0.9]],
+    encodeQuery: async () => [1, 0],
+  },
+});
 
 describe("search/index hybrid", () => {
   test("hybrid search uses semantic and graph lists", async () => {

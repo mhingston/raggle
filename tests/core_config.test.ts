@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
 import { getSettings, resetSettings } from "../src/core/config";
 
 function withEnv(env: Record<string, string>, fn: () => void): void {

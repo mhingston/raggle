@@ -1,6 +1,6 @@
-import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import { assertNotReadOnly, getSettings, isReadOnly } from "../core/config";
 
 export type NodeType = "file" | "section" | "entity" | "tag";
@@ -102,7 +102,7 @@ export class SQLiteGraphStore implements GraphStore {
 
   private validateSchema(): void {
     const rows = this.db
-      .query(`SELECT name FROM sqlite_master WHERE type = 'table'`)
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`)
       .all() as Array<{ name: string }>;
     const tables = new Set(rows.map((r) => r.name));
     const required = ["nodes", "edges", "edge_provenance"];
@@ -121,7 +121,7 @@ export class SQLiteGraphStore implements GraphStore {
     assertNotReadOnly("addFileNode");
     const nodeId = this.getNodeId("file", filePath);
     this.db
-      .query(
+      .prepare(
         `
       INSERT OR REPLACE INTO nodes (node_id, node_type, name, properties)
       VALUES (?, ?, ?, ?)
@@ -140,7 +140,7 @@ export class SQLiteGraphStore implements GraphStore {
     assertNotReadOnly("addSectionNode");
     const nodeId = this.getNodeId("section", chunkId);
     this.db
-      .query(
+      .prepare(
         `
       INSERT OR REPLACE INTO nodes (node_id, node_type, name, properties)
       VALUES (?, ?, ?, ?)
@@ -167,7 +167,7 @@ export class SQLiteGraphStore implements GraphStore {
     assertNotReadOnly("addEntityNode");
     const nodeId = this.getNodeId("entity", `${entityType}:${name}`);
     this.db
-      .query(
+      .prepare(
         `
       INSERT OR REPLACE INTO nodes (node_id, node_type, name, properties)
       VALUES (?, ?, ?, ?)
@@ -180,7 +180,7 @@ export class SQLiteGraphStore implements GraphStore {
     assertNotReadOnly("addTagNode");
     const nodeId = this.getNodeId("tag", name);
     this.db
-      .query(
+      .prepare(
         `
       INSERT OR REPLACE INTO nodes (node_id, node_type, name, properties)
       VALUES (?, ?, ?, ?)
@@ -198,7 +198,7 @@ export class SQLiteGraphStore implements GraphStore {
   ): void {
     assertNotReadOnly("addEdge");
     this.db
-      .query(
+      .prepare(
         `
       INSERT OR REPLACE INTO edges (source_id, target_id, relation_type, weight)
       VALUES (?, ?, ?, ?)
@@ -208,7 +208,7 @@ export class SQLiteGraphStore implements GraphStore {
 
     if (relationType === "CO_OCCURS" && chunkId) {
       this.db
-        .query(
+        .prepare(
           `
         INSERT OR REPLACE INTO edge_provenance
         (source_id, target_id, relation_type, chunk_id)
@@ -232,7 +232,7 @@ export class SQLiteGraphStore implements GraphStore {
         visited.add(currentNode);
 
         const rows = this.db
-          .query(
+          .prepare(
             `
           SELECT
             CASE WHEN source_id = ? THEN target_id ELSE source_id END AS neighbor_id,
@@ -270,7 +270,7 @@ export class SQLiteGraphStore implements GraphStore {
     assertNotReadOnly("deleteEdgesByChunkIds");
     const placeholders = chunkIds.map(() => "?").join(",");
     const impacted = this.db
-      .query(
+      .prepare(
         `
       SELECT DISTINCT source_id, target_id, relation_type
       FROM edge_provenance
@@ -284,12 +284,12 @@ export class SQLiteGraphStore implements GraphStore {
     }>;
 
     this.db
-      .query(`DELETE FROM edge_provenance WHERE chunk_id IN (${placeholders})`)
+      .prepare(`DELETE FROM edge_provenance WHERE chunk_id IN (${placeholders})`)
       .run(...chunkIds);
 
     for (const edge of impacted) {
       const remaining = this.db
-        .query(
+        .prepare(
           `
         SELECT 1 FROM edge_provenance
         WHERE source_id = ? AND target_id = ? AND relation_type = ?
@@ -300,7 +300,7 @@ export class SQLiteGraphStore implements GraphStore {
 
       if (!remaining) {
         this.db
-          .query(
+          .prepare(
             `
           DELETE FROM edges
           WHERE source_id = ? AND target_id = ? AND relation_type = ?
@@ -316,11 +316,11 @@ export class SQLiteGraphStore implements GraphStore {
     assertNotReadOnly("deleteNodes");
     const placeholders = nodeIds.map(() => "?").join(",");
     this.db
-      .query(
+      .prepare(
         `DELETE FROM edges WHERE source_id IN (${placeholders}) OR target_id IN (${placeholders})`
       )
       .run(...nodeIds, ...nodeIds);
-    this.db.query(`DELETE FROM nodes WHERE node_id IN (${placeholders})`).run(...nodeIds);
+    this.db.prepare(`DELETE FROM nodes WHERE node_id IN (${placeholders})`).run(...nodeIds);
   }
 
   deleteAll(): void {
@@ -333,19 +333,23 @@ export class SQLiteGraphStore implements GraphStore {
   }
 
   nodeCount(): number {
-    const result = this.db.query("SELECT COUNT(*) as count FROM nodes").get() as { count: number };
+    const result = this.db.prepare("SELECT COUNT(*) as count FROM nodes").get() as {
+      count: number;
+    };
     return result.count;
   }
 
   nodeCountByType(type: NodeType): number {
     const result = this.db
-      .query("SELECT COUNT(*) as count FROM nodes WHERE node_type = ?")
+      .prepare("SELECT COUNT(*) as count FROM nodes WHERE node_type = ?")
       .get(type) as { count: number };
     return result.count;
   }
 
   edgeCount(): number {
-    const result = this.db.query("SELECT COUNT(*) as count FROM edges").get() as { count: number };
+    const result = this.db.prepare("SELECT COUNT(*) as count FROM edges").get() as {
+      count: number;
+    };
     return result.count;
   }
 

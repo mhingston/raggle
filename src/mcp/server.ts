@@ -1,5 +1,6 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
+import { createRequire } from "node:module";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -13,6 +14,9 @@ import type { SearchMode } from "../core/models";
 import { type IndexingProgress, indexDirectory } from "../ingestion/pipeline";
 import { type SearchOptions, search } from "../search/index";
 import { getGraphStore, getMetadataStore, getVectorStore } from "../storage";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../../package.json") as { version: string };
 
 const TOOLS: Tool[] = [
   {
@@ -97,7 +101,7 @@ export async function startMCPServer(): Promise<void> {
   const server = new Server(
     {
       name: "raggle",
-      version: "0.1.0",
+      version: pkg.version,
     },
     {
       capabilities: {

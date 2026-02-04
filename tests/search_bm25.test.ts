@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
 import { bm25Search, buildBM25Index, loadBM25Index, saveBM25Index } from "../src/search/bm25";
 import { createTempIndexDir } from "./helpers";
 

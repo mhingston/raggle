@@ -1,6 +1,6 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
-import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { getSettings } from "./core/config";
 import { loadEnv } from "./core/env";
@@ -9,10 +9,8 @@ import { type IndexingProgress, indexDirectory } from "./ingestion/pipeline";
 import { type SearchOptions, search } from "./search/index";
 import { getGraphStore, getMetadataStore, getVectorStore } from "./storage";
 
-if (!process.versions?.bun) {
-  console.error("raggle requires Bun. Install Bun and rerun: https://bun.sh");
-  process.exit(1);
-}
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 
 const program = new Command();
 
@@ -21,7 +19,7 @@ loadEnv();
 program
   .name("raggle")
   .description("Markdown knowledgebase indexer with hybrid search")
-  .version("0.1.0");
+  .version(pkg.version);
 
 program
   .command("index")
@@ -205,12 +203,11 @@ program
   .command("mcp-config")
   .description("Output MCP configuration for Claude/Cursor")
   .action(() => {
-    const cliPath = fileURLToPath(import.meta.url);
     const config = {
       mcpServers: {
         raggle: {
-          command: "bun",
-          args: ["run", cliPath, "mcp"],
+          command: "npx",
+          args: ["-y", "@mhingston5/raggle", "mcp"],
           env: {
             RAGGLE_INDEX_DIR: getSettings().indexDir,
           },

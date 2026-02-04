@@ -1,6 +1,6 @@
-import { Database as BunDatabase } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { assertNotReadOnly, getSettings, isReadOnly } from "../core/config";
 import type { Chunk } from "../core/models";
@@ -12,9 +12,6 @@ export interface VectorStore {
   deleteAll(): void;
   count(): number;
 }
-
-// Type for SQLite database (either bun:sqlite or better-sqlite3)
-type Database = BunDatabase | import("better-sqlite3").Database;
 
 /**
  * Brute-force vector store using cosine similarity.
@@ -47,7 +44,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 export class BruteForceVectorStore implements VectorStore {
-  private db: BunDatabase;
+  private db: Database;
   private cache: Map<string, number[]> = new Map();
   private needsReload: boolean = true;
 
@@ -65,7 +62,7 @@ export class BruteForceVectorStore implements VectorStore {
     } else {
       mkdirSync(indexDir, { recursive: true });
     }
-    this.db = new BunDatabase(dbFile);
+    this.db = new Database(dbFile);
     if (isReadOnly()) {
       this.validateSchema();
     } else {
@@ -84,7 +81,7 @@ export class BruteForceVectorStore implements VectorStore {
 
   private validateSchema(): void {
     const rows = this.db
-      .query(`SELECT name FROM sqlite_master WHERE type = 'table'`)
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`)
       .all() as Array<{ name: string }>;
     const tables = new Set(rows.map((r) => r.name));
     if (!tables.has("vectors")) {
@@ -96,7 +93,7 @@ export class BruteForceVectorStore implements VectorStore {
     if (!this.needsReload) return;
 
     this.cache.clear();
-    const rows = this.db.query("SELECT chunk_id, embedding FROM vectors").all() as Array<{
+    const rows = this.db.prepare("SELECT chunk_id, embedding FROM vectors").all() as Array<{
       chunk_id: string;
       embedding: Buffer;
     }>;
@@ -115,7 +112,7 @@ export class BruteForceVectorStore implements VectorStore {
 
   addChunks(chunks: Chunk[], embeddings: number[][]): void {
     assertNotReadOnly("addChunks");
-    const insert = this.db.query(
+    const insert = this.db.prepare(
       "INSERT OR REPLACE INTO vectors (chunk_id, embedding) VALUES (?, ?)"
     );
 
@@ -153,7 +150,7 @@ export class BruteForceVectorStore implements VectorStore {
     if (chunkIds.length === 0) return;
     assertNotReadOnly("deleteChunks");
     const placeholders = chunkIds.map(() => "?").join(",");
-    this.db.query(`DELETE FROM vectors WHERE chunk_id IN (${placeholders})`).run(...chunkIds);
+    this.db.prepare(`DELETE FROM vectors WHERE chunk_id IN (${placeholders})`).run(...chunkIds);
     for (const chunkId of chunkIds) {
       this.cache.delete(chunkId);
     }
@@ -167,7 +164,7 @@ export class BruteForceVectorStore implements VectorStore {
   }
 
   count(): number {
-    const result = this.db.query("SELECT COUNT(*) as count FROM vectors").get() as {
+    const result = this.db.prepare("SELECT COUNT(*) as count FROM vectors").get() as {
       count: number;
     };
     return result.count;
@@ -215,25 +212,15 @@ export class SQLiteVecVectorStore implements VectorStore {
       mkdirSync(indexDir, { recursive: true });
     }
 
-    // Try to use better-sqlite3 for extension support, fall back to bun:sqlite
-    let db: Database;
-    try {
-      const BetterSQLite3 = require("better-sqlite3");
-      db = new BetterSQLite3(dbFile);
-    } catch {
-      if (isReadOnly()) {
-        throw new Error(
-          "Read-only sqlite-vec index requires better-sqlite3. " +
-            "Install better-sqlite3 or reindex to use brute-force vectors."
-        );
-      }
-      // better-sqlite3 not available, try bun:sqlite (won't support extensions)
-      db = new BunDatabase(dbFile);
-    }
-    this.db = db;
+    this.db = new Database(dbFile);
 
     // Load sqlite-vec extension
-    sqliteVec.load(this.db);
+    try {
+      sqliteVec.load(this.db);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to load sqlite-vec extension: ${message}`);
+    }
 
     if (isReadOnly()) {
       this.validateSchema();
@@ -243,14 +230,19 @@ export class SQLiteVecVectorStore implements VectorStore {
   }
 
   private initializeTables(): void {
-    // Create the vector virtual table with HNSW index
-    // chunk_id is stored as the rowid for efficient lookups
-    this.db.exec(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS ${this.tableName} USING vec0(
-        chunk_id TEXT PRIMARY KEY,
-        embedding FLOAT[${this.dimension}] distance_metric=cosine
-      );
-    `);
+    try {
+      // Create the vector virtual table with HNSW index
+      // chunk_id is stored as the rowid for efficient lookups
+      this.db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS ${this.tableName} USING vec0(
+          chunk_id TEXT PRIMARY KEY,
+          embedding FLOAT[${this.dimension}] distance_metric=cosine
+        );
+      `);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to initialize sqlite-vec tables: ${message}`);
+    }
 
     // Create metadata table to store chunk_id to rowid mapping
     // This allows us to efficiently delete by chunk_id
@@ -270,7 +262,7 @@ export class SQLiteVecVectorStore implements VectorStore {
 
   private validateSchema(): void {
     const rows = this.db
-      .query(`SELECT name FROM sqlite_master WHERE type = 'table'`)
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`)
       .all() as Array<{ name: string }>;
     const tables = new Set(rows.map((r) => r.name));
     const required = [this.tableName, "vec_metadata"];
@@ -342,7 +334,7 @@ export class SQLiteVecVectorStore implements VectorStore {
     // Convert to similarity: similarity = 1 - (distance / 2)
     // Note: We use a subquery because SQLite doesn't allow SELECT aliases in WHERE clauses
     const results = this.db
-      .query(
+      .prepare(
         `
         SELECT chunk_id, similarity FROM (
           SELECT 
@@ -373,22 +365,14 @@ export class SQLiteVecVectorStore implements VectorStore {
     if (chunkIds.length === 0) return;
     assertNotReadOnly("deleteChunks");
 
-    // Get rowids for the chunk_ids
     const placeholders = chunkIds.map(() => "?").join(",");
-    const rowids = this.db
-      .query(`SELECT rowid FROM vec_metadata WHERE chunk_id IN (${placeholders})`)
-      .all(...chunkIds) as Array<{ rowid: number }>;
-
-    if (rowids.length === 0) return;
-
-    // Delete from virtual table using rowids
-    const rowidPlaceholders = rowids.map(() => "?").join(",");
     this.db
-      .query(`DELETE FROM ${this.tableName} WHERE rowid IN (${rowidPlaceholders})`)
-      .run(...rowids.map((r) => r.rowid));
+      .prepare(`DELETE FROM ${this.tableName} WHERE chunk_id IN (${placeholders})`)
+      .run(...chunkIds);
 
-    // Delete from metadata table
-    this.db.query(`DELETE FROM vec_metadata WHERE chunk_id IN (${placeholders})`).run(...chunkIds);
+    this.db
+      .prepare(`DELETE FROM vec_metadata WHERE chunk_id IN (${placeholders})`)
+      .run(...chunkIds);
   }
 
   deleteAll(): void {
@@ -400,7 +384,7 @@ export class SQLiteVecVectorStore implements VectorStore {
   }
 
   count(): number {
-    const result = this.db.query(`SELECT COUNT(*) as count FROM ${this.tableName}`).get() as {
+    const result = this.db.prepare(`SELECT COUNT(*) as count FROM ${this.tableName}`).get() as {
       count: number;
     };
     return result.count;
@@ -421,8 +405,8 @@ export class SQLiteVecVectorStore implements VectorStore {
     const count = this.count();
 
     // Get index size from SQLite
-    const pageCount = this.db.query("PRAGMA page_count").get() as { page_count: number };
-    const pageSize = this.db.query("PRAGMA page_size").get() as { page_size: number };
+    const pageCount = this.db.prepare("PRAGMA page_count").get() as { page_count: number };
+    const pageSize = this.db.prepare("PRAGMA page_size").get() as { page_size: number };
     const indexSize = (pageCount.page_count * pageSize.page_size) / (1024 * 1024); // MB
 
     return {
@@ -442,9 +426,9 @@ let globalStoreDimension: number | null = null;
 
 function detectVectorStoreType(dbFile: string): "sqlite-vec" | "brute" | "unknown" {
   if (!existsSync(dbFile)) return "unknown";
-  const db = new BunDatabase(dbFile);
+  const db = new Database(dbFile);
   try {
-    const rows = db.query(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{
+    const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{
       name: string;
     }>;
     const tables = new Set(rows.map((r) => r.name));
@@ -471,16 +455,7 @@ export function getVectorStore(dimension?: number): VectorStore {
         throw new Error(`Vector index not found or unrecognized in read-only mode: ${dbFile}`);
       }
     } else {
-      // Try sqlite-vec first for HNSW indexing, fall back to brute-force if it fails
-      // (e.g., when using bun:sqlite which doesn't support dynamic extensions)
-      try {
-        globalStore = new SQLiteVecVectorStore(undefined, effectiveDim);
-      } catch (_error) {
-        console.warn(
-          "sqlite-vec not available (dynamic extensions not supported), falling back to brute-force vector search"
-        );
-        globalStore = new BruteForceVectorStore();
-      }
+      globalStore = new SQLiteVecVectorStore(undefined, effectiveDim);
     }
     globalStoreDimension = dimension ?? settings.embeddingDim;
     return globalStore;
@@ -492,14 +467,7 @@ export function getVectorStore(dimension?: number): VectorStore {
     if (globalStore && "close" in globalStore) {
       (globalStore as { close: () => void }).close();
     }
-    try {
-      globalStore = new SQLiteVecVectorStore(undefined, dimension);
-    } catch (_error) {
-      console.warn(
-        "sqlite-vec not available (dynamic extensions not supported), falling back to brute-force vector search"
-      );
-      globalStore = new BruteForceVectorStore();
-    }
+    globalStore = new SQLiteVecVectorStore(undefined, dimension);
     globalStoreDimension = dimension;
   }
   return globalStore;

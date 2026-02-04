@@ -1,19 +1,21 @@
-import { describe, expect, test, mock } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import esmock from "esmock";
 import { createTempIndexDir } from "./helpers";
 import { getMetadataStore } from "../src/storage";
 
-mock.module("@xenova/transformers", () => ({
-  pipeline: async () => {
-    throw new Error("boom");
-  },
-}));
-
-import {
+const {
   calculateLengthPenalty,
   rerankAndBlend,
   rerankResults,
   resetRerankerPipeline,
-} from "../src/search/reranker";
+} = await esmock.p("../src/search/reranker", {
+  "@xenova/transformers": {
+    pipeline: async () => {
+      throw new Error("boom");
+    },
+  },
+});
 
 describe("search/reranker edges", () => {
   test("rerankResults falls back when pipeline unavailable", async () => {

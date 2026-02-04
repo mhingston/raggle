@@ -1,15 +1,20 @@
-import { describe, expect, test, mock } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import esmock from "esmock";
 
-mock.module("@xenova/transformers", () => ({
-  pipeline: async (_task: string) => {
-    return async () => [
-      { word: "Alice", entity_group: "PER", score: 0.9, start: 0, end: 5 },
-      { word: "OpenAI", entity_group: "ORG", score: 0.9, start: 6, end: 12 },
-    ];
-  },
-}));
-
-import { batchExtractNamedEntities, extractNamedEntities, resetNERPipeline } from "../src/extraction/ner";
+const { batchExtractNamedEntities, extractNamedEntities, resetNERPipeline } = await esmock.p(
+  "../src/extraction/ner",
+  {
+    "@xenova/transformers": {
+      pipeline: async (_task: string) => {
+        return async () => [
+          { word: "Alice", entity_group: "PER", score: 0.9, start: 0, end: 5 },
+          { word: "OpenAI", entity_group: "ORG", score: 0.9, start: 6, end: 12 },
+        ];
+      },
+    },
+  }
+);
 
 describe("extraction/ner", () => {
   test("extractNamedEntities filters by types", async () => {

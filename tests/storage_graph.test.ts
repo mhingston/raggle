@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
 import { getGraphStore } from "../src/storage";
 import { createTempIndexDir } from "./helpers";
 

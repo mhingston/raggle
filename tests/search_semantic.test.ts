@@ -1,14 +1,20 @@
-import { describe, expect, test, mock } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import esmock from "esmock";
 import { createTempIndexDir } from "./helpers";
 import { getVectorStore } from "../src/storage";
 
-mock.module("@xenova/transformers", () => ({
-  pipeline: async (_task: string) => {
-    return async (_text: string) => ({ data: new Float32Array([1, 0]) });
+const { encodeQuery, resetSemanticSearch, semanticSearch } = await esmock.p("../src/search/semantic", {
+  "@xenova/transformers": {
+    pipeline: async (_task: string) => {
+      return async (_text: string) => {
+        const data = new Float32Array(384);
+        data[0] = 1;
+        return { data };
+      };
+    },
   },
-}));
-
-import { encodeQuery, resetSemanticSearch, semanticSearch } from "../src/search/semantic";
+});
 
 describe("search/semantic", () => {
   test("encodeQuery and semanticSearch", async () => {
@@ -26,11 +32,17 @@ describe("search/semantic", () => {
           charOffset: 0,
         },
       ],
-      [[1, 0]]
+      [
+        (() => {
+          const data = new Array(384).fill(0);
+          data[0] = 1;
+          return data;
+        })(),
+      ]
     );
 
     const embedding = await encodeQuery("query");
-    expect(embedding.length).toBe(2);
+    expect(embedding.length).toBe(384);
 
     const results = await semanticSearch("query", 1);
     expect(results[0]?.[0]).toBe("c1");

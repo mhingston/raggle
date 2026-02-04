@@ -15,8 +15,8 @@ raggle is a local-first Markdown knowledge base indexer. It builds a hybrid inde
 
 ## Requirements
 
-- Bun (required at runtime; the CLI runs under Bun and uses `bun:sqlite`)
-- Optional: `better-sqlite3` for sqlite-vec HNSW indexing and read-only access to existing sqlite-vec indexes
+- Node.js (runtime)
+- `better-sqlite3` (required for sqlite-vec HNSW indexing)
 
 ## Features
 
@@ -29,7 +29,7 @@ raggle is a local-first Markdown knowledge base indexer. It builds a hybrid inde
 ## Quickstart
 
 ```bash
-# Install the CLI (Bun required)
+# Install the CLI (Node required)
 npm install -g @mhingston5/raggle
 
 # Index a directory
@@ -42,12 +42,13 @@ raggle search "your query here"
 raggle mcp-config
 ```
 
-If you haven’t installed the CLI globally, run from source with Bun:
+If you haven’t installed the CLI globally, run from source:
 
 ```bash
-bun install
-bun run src/cli.ts index /path/to/markdown/files
-bun run src/cli.ts search "your query here"
+npm install
+npm run build
+node dist/cli.js index /path/to/markdown/files
+node dist/cli.js search "your query here"
 ```
 
 ## Usage
@@ -93,9 +94,9 @@ Example `mcp-config` output:
 {
   "mcpServers": {
     "raggle": {
-      "command": "bun",
-      "args": ["run", "/path/to/raggle/dist/cli.js", "mcp"],
-      "env": { "RAGGLE_INDEX_DIR": "/Users/you/project" }
+      "command": "npx",
+      "args": ["-y", "@mhingston5/raggle", "mcp"],
+      "env": { "RAGGLE_INDEX_DIR": "/Users/you/project/.raggle" }
     }
   }
 }
@@ -107,7 +108,7 @@ All configuration uses the `RAGGLE_` prefix:
 
 Raggle loads a `.env` file from the current working directory (if present) when starting the CLI or MCP server.
 
-- `RAGGLE_INDEX_DIR`: Index directory (default: current working directory)
+- `RAGGLE_INDEX_DIR`: Index directory (default: `<cwd>/.raggle`)
 - `RAGGLE_EMBEDDING_MODEL`: Embedding model (default: `Xenova/bge-small-en-v1.5`)
 - `RAGGLE_EMBEDDING_DIM`: Embedding dimension override (default: `384`)
 - `RAGGLE_EXTRACT_DEPTH`: Extraction depth (`structural` or `ner`, default: `ner`)
@@ -135,7 +136,7 @@ The first run will download model files from Hugging Face. Subsequent runs use t
 
 ## Storage
 
-Data is stored in the current working directory by default:
+Data is stored in `<cwd>/.raggle` by default:
 
 - `metadata.db`: SQLite database for chunks and stats
 - `vectors.db`: Vector embeddings with HNSW indexing (via sqlite-vec)
@@ -154,19 +155,12 @@ Vectors are indexed using [sqlite-vec](https://github.com/asg017/sqlite-vec) wit
 - Scalable to large document collections (10k+ chunks)
 - Single-file storage with ACID compliance
 
-**Note**: HNSW indexing requires `better-sqlite3` (included as optional dependency). If not available, raggle automatically falls back to brute-force cosine similarity search with a warning. In read-only mode, an existing sqlite-vec index requires `better-sqlite3`.
-
-In short: if you plan to use `RAGGLE_READ_ONLY=1` with a sqlite-vec index, install `better-sqlite3`.
+**Note**: HNSW indexing requires `better-sqlite3`.
 
 ```bash
 # To enable HNSW indexing (recommended for large collections)
-bun add better-sqlite3
-
-# Or with npm
 npm install better-sqlite3
 ```
-
-Without `better-sqlite3`, searches still work correctly but use O(n) brute-force scanning instead of O(log n) HNSW indexing.
 
 ## Architecture
 
@@ -188,16 +182,16 @@ raggle/
 
 ```bash
 # Run type checker
-bun run typecheck
+npm run typecheck
 
 # Run linter
-bun run lint
+npm run lint
 
 # Run linter with auto-fix
-bun run lint:fix
+npm run lint:fix
 
 # Format code
-bun run format
+npm run format
 ```
 
 ## Search Modes

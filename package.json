@@ -1,6 +1,6 @@
 {
   "name": "@mhingston5/raggle",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Markdown knowledgebase indexer with hybrid search (semantic + BM25 + graph)",
   "author": "Mark Hingsston",
   "license": "MIT",
@@ -14,32 +14,34 @@
     "raggle": "./dist/cli.js"
   },
   "scripts": {
-    "start": "bun run src/cli.ts",
-    "mcp": "bun run src/mcp/server.ts",
+    "start": "node dist/cli.js",
+    "mcp": "node dist/mcp/server.js",
     "lint": "biome check src/",
     "lint:fix": "biome check src/ --write",
     "format": "biome format src/ --write",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
-    "test:coverage": "bun test --coverage",
-    "ci": "bun run lint && bun test --coverage",
-    "build": "bun build src/cli.ts --outfile dist/cli.js --target bun && chmod +x dist/cli.js",
-    "prepare": "bun run build"
+    "test": "node --test --import tsx --test-concurrency=1 tests/**/*.test.ts",
+    "test:coverage": "node --test --import tsx --test-concurrency=1 tests/**/*.test.ts",
+    "ci:install": "npm ci",
+    "ci": "npm run ci:install && npm run lint && npm run test",
+    "build": "esbuild src/cli.ts --outfile=dist/cli.js --platform=node --format=esm --bundle --packages=external && esbuild src/mcp/server.ts --outfile=dist/mcp/server.js --platform=node --format=esm --bundle --packages=external && chmod +x dist/cli.js dist/mcp/server.js",
+    "prepare": "npm run build"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.14",
-    "@types/bun": "latest",
-    "typescript": "^5"
+    "@biomejs/biome": "2.3.14",
+    "esbuild": "0.27.2",
+    "esmock": "2.7.3",
+    "expect": "29.7.0",
+    "tsx": "4.21.0",
+    "typescript": "5.0.4"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.3",
-    "@xenova/transformers": "^2.17.2",
-    "commander": "^14.0.3",
-    "dotenv": "^16.6.1",
-    "onnxruntime-node": "^1.21.0",
-    "sqlite-vec": "^0.1.7-alpha.2"
-  },
-  "optionalDependencies": {
-    "better-sqlite3": "^12.0.0"
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "@xenova/transformers": "2.17.2",
+    "better-sqlite3": "12.0.0",
+    "commander": "14.0.3",
+    "dotenv": "16.6.1",
+    "onnxruntime-node": "1.21.0",
+    "sqlite-vec": "0.1.7-alpha.2"
   }
 }

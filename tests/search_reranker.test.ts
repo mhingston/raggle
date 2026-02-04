@@ -1,14 +1,16 @@
-import { describe, expect, test, mock } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import esmock from "esmock";
 import { createTempIndexDir } from "./helpers";
 import { getMetadataStore } from "../src/storage";
 
-mock.module("@xenova/transformers", () => ({
-  pipeline: async (_task: string) => {
-    return async () => [{ label: "LABEL_1", score: 0.9 }];
+const { blendScores, rerankAndBlend, rerankResults } = await esmock.p("../src/search/reranker", {
+  "@xenova/transformers": {
+    pipeline: async (_task: string) => {
+      return async () => [{ label: "LABEL_1", score: 0.9 }];
+    },
   },
-}));
-
-import { blendScores, rerankAndBlend, rerankResults } from "../src/search/reranker";
+});
 
 describe("search/reranker", () => {
   test("rerankResults returns scored ids", async () => {

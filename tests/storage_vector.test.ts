@@ -1,9 +1,6 @@
-import { describe, expect, test } from "bun:test";
-import { Database } from "bun:sqlite";
-import { createRequire } from "node:module";
-import { join } from "node:path";
+import { describe, test } from "node:test";
+import { expect } from "expect";
 import { getVectorStore } from "../src/storage";
-import { resetAllStores } from "./helpers";
 import { createTempIndexDir } from "./helpers";
 
 describe("storage/vector", () => {
@@ -53,32 +50,12 @@ describe("storage/vector", () => {
     expect(store.count()).toBe(1);
   });
 
-  test("read-only sqlite-vec requires better-sqlite3", () => {
-    const require = createRequire(import.meta.url);
-    let hasBetterSqlite = false;
-    try {
-      require("better-sqlite3");
-      hasBetterSqlite = true;
-    } catch {
-      // better-sqlite3 not installed
-    }
-
-    if (hasBetterSqlite) {
-      // Environment supports better-sqlite3; skip this behavior check.
-      return;
-    }
-
-    const dir = createTempIndexDir();
+  test("read-only without index throws", () => {
+    createTempIndexDir();
     process.env.RAGGLE_READ_ONLY = "1";
 
-    const db = new Database(join(dir, "vectors.db"));
-    db.exec("CREATE TABLE IF NOT EXISTS vec_chunks (chunk_id TEXT PRIMARY KEY)");
-    db.close();
-
-    resetAllStores();
-
     expect(() => getVectorStore()).toThrow(
-      "Read-only sqlite-vec index requires better-sqlite3"
+      "Vector index not found or unrecognized in read-only mode"
     );
 
     delete process.env.RAGGLE_READ_ONLY;
