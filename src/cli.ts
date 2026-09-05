@@ -31,6 +31,12 @@ program
     getSettings().extractDepth
   )
   .option("--entity-types <types>", "Comma-separated list of entity types to extract")
+  .option(
+    "--exclude <pattern>",
+    "Exclude a root-relative glob (repeatable; e.g. evidence/**)",
+    (value: string, previous: string[] = []) => [...previous, value],
+    []
+  )
   .option("--rebuild", "Rebuild the index from scratch", false)
   .action(async (directory: string, options) => {
     try {
@@ -40,6 +46,7 @@ program
       const result = await indexDirectory(directory, {
         extractDepth: options.extractDepth as "structural" | "ner",
         entityTypes: options.entityTypes?.split(",").map((t: string) => t.trim()),
+        exclude: options.exclude as string[],
         rebuild: options.rebuild,
         onProgress: (progress: IndexingProgress) => {
           const percentage =

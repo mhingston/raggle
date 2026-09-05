@@ -35,6 +35,9 @@ npm install -g @mhingston5/raggle
 # Index a directory
 raggle index /path/to/markdown/files
 
+# Exclude root-relative glob patterns (repeatable)
+raggle index /path/to/markdown/files --exclude 'evidence/**' --exclude '**/drafts/**'
+
 # Search the index
 raggle search "your query here"
 
@@ -57,6 +60,9 @@ node dist/cli.js search "your query here"
 
 ```bash
 raggle index /path/to/markdown/files
+
+# Exclude files or directories below the indexed root
+raggle index /path/to/markdown/files --exclude 'archive/**' --exclude '*.generated.md'
 
 raggle search "your query here"
 

@@ -24,6 +24,22 @@ describe("ingestion/reader", () => {
     expect(files).toEqual([]);
   });
 
+  test("excludes root-relative glob patterns", async () => {
+    const base = createTempIndexDir();
+    const docsDir = join(base, "docs");
+    const evidenceDir = join(docsDir, "evidence");
+    mkdirSync(evidenceDir, { recursive: true });
+    writeFileSync(join(docsDir, "keep.md"), "# Keep");
+    writeFileSync(join(docsDir, "draft.md"), "# Draft");
+    writeFileSync(join(evidenceDir, "raw.md"), "# Raw");
+
+    const files = await discoverMarkdownFiles(docsDir, {
+      exclude: ["draft.md", "evidence/**"],
+    });
+
+    expect(files.map((file) => file.path)).toEqual([join(docsDir, "keep.md")]);
+  });
+
   test("allows in-tree symlinked directories and skips symlinked files/out-of-tree", async () => {
     const base = createTempIndexDir();
     const docsDir = join(base, "docs");

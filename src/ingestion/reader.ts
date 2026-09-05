@@ -1,9 +1,17 @@
 import { createHash } from "node:crypto";
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
-import { basename, extname, join, sep } from "node:path";
+import { basename, extname, join, relative, sep } from "node:path";
 import type { FileInfo } from "../core/models";
+import { matchesExclude, matchesExcludeDirectory } from "./exclude";
 
-export async function discoverMarkdownFiles(directory: string): Promise<FileInfo[]> {
+export type DiscoveryOptions = {
+  exclude?: string[];
+};
+
+export async function discoverMarkdownFiles(
+  directory: string,
+  options: DiscoveryOptions = {}
+): Promise<FileInfo[]> {
   const files: FileInfo[] = [];
   let rootRealPath = "";
 
@@ -75,9 +83,13 @@ export async function discoverMarkdownFiles(directory: string): Promise<FileInfo
           continue;
         }
 
+        const relativePath = relative(rootRealPath, await realpath(fullPath));
+
         if (stats.isDirectory()) {
+          if (matchesExcludeDirectory(relativePath, options.exclude)) continue;
           await walk(fullPath);
         } else if (stats.isFile() && extname(entry).toLowerCase() === ".md") {
+          if (matchesExclude(relativePath, options.exclude)) continue;
           const content = await readFile(fullPath, "utf-8");
           const checksum = createHash("md5").update(content).digest("hex");
 

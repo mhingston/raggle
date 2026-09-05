@@ -77,6 +77,11 @@ const TOOLS: Tool[] = [
           items: { type: "string" },
           description: "Entity types to extract",
         },
+        exclude: {
+          type: "array",
+          items: { type: "string" },
+          description: "Root-relative glob patterns to exclude",
+        },
         rebuild: {
           type: "boolean",
           description: "Rebuild the index from scratch",
@@ -186,6 +191,7 @@ export async function startMCPServer(): Promise<void> {
           const extractDepth =
             (args?.extract_depth as "structural" | "ner") ?? getSettings().extractDepth;
           const entityTypes = args?.entity_types as string[] | undefined;
+          const exclude = args?.exclude as string[] | undefined;
           const rebuild = (args?.rebuild as boolean) ?? false;
 
           if (!directory) {
@@ -205,6 +211,7 @@ export async function startMCPServer(): Promise<void> {
           const result = await indexDirectory(directory, {
             extractDepth,
             entityTypes,
+            exclude,
             rebuild,
             onProgress: (progress: IndexingProgress) => {
               progressMessages.push(

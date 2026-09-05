@@ -27,6 +27,7 @@ export type IndexingOptions = {
   onProgress?: (progress: IndexingProgress) => void;
   extractDepth?: "structural" | "ner";
   entityTypes?: string[];
+  exclude?: string[];
   rebuild?: boolean;
 };
 
@@ -88,7 +89,7 @@ export async function indexDirectory(
     message: "Discovering Markdown files...",
   });
 
-  const files = await discoverMarkdownFiles(directory);
+  const files = await discoverMarkdownFiles(directory, { exclude: options.exclude });
 
   options.onProgress?.({
     phase: "discovering",

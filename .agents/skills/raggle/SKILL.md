@@ -33,6 +33,8 @@ Index the explicitly selected Markdown directory:
 
 ```bash
 raggle index path/to/markdown
+# Exclude root-relative globs; repeat the option as needed.
+raggle index path/to/markdown --exclude 'evidence/**' --exclude '**/drafts/**'
 ```
 
 Inspect the derived index:
@@ -61,6 +63,8 @@ raggle mcp
 ```
 
 Set `RAGGLE_INDEX_DIR` in the MCP server environment and start a new client session after changing project-scoped configuration.
+
+The MCP `index` tool accepts an `exclude` string array with the same root-relative glob semantics.
 
 ## Rebuild and failure handling
 
